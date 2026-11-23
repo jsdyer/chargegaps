@@ -1,16 +1,23 @@
 {
-  "id": "coolcode-tool-template",
-  "title": "CoolCode Tool Starter",
-  "description": "A browser-only example that trims lines and removes exact duplicates.",
-  "category": "security",
-  "tags": ["text", "lines", "duplicates"],
-  "icon": "scan-search",
-  "url": "/coolcode-tool-template/",
-  "source": "https://github.com/jsdyer/coolcode-tool-template",
+  "id": "chargegaps",
+  "title": "Charge Gaps",
+  "description": "Explore charging locations and find where recorded coverage thins out.",
+  "category": "places",
+  "tags": [
+    "charging",
+    "electric vehicles",
+    "coverage",
+    "Canada",
+    "Open Charge Map"
+  ],
+  "icon": "map-pin",
+  "url": "/chargegaps/",
+  "source": "https://github.com/jsdyer/chargegaps",
   "hosting": "project",
   "access": "browser",
   "data_info": {
-    "mode": "local",
-    "detail": "The browser reads the text you paste and compares its lines."
+    "mode": "snapshot",
+    "detail": "Dated Open Charge Map country exports, searched locally with straight-line distances and provider attribution.",
+    "cadence": "Weekly source check"
   }
 }

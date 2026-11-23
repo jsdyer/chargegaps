@@ -1,21 +1,14 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { cleanLines } from '../web/model.mjs';
-test('trims, removes blanks and preserves first-seen order', () => {
-  assert.deepEqual(cleanLines('  Halifax\nLangley\nHalifax\n\nVancouver  '), {
-    text: 'Halifax\nLangley\nVancouver', count: 3, removed: 1,
-  });
-});
-test('supports Windows and old Mac line endings', () => {
-  assert.equal(cleanLines('a\r\nb\ra').text, 'a\nb');
-});
-test('empty text and whitespace produce an empty result', () => {
-  assert.deepEqual(cleanLines(' \n\t'), { text: '', count: 0, removed: 0 });
-});
-test('preserves case and Unicode', () => {
-  assert.equal(cleanLines('Québec\nquébec\n東京\nQuébec').text, 'Québec\nquébec\n東京');
-});
-test('treats markup as ordinary text', () => {
-  assert.equal(cleanLines('<script>alert(1)</script>\n<script>alert(1)</script>').text, '<script>alert(1)</script>');
-});
-test('rejects non-text input', () => { assert.throws(() => cleanLines(null), TypeError); });
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {gunzipSync} from 'node:zlib';import {createHash} from 'node:crypto';
+import {COLUMNS,point,distance,decode,matchingConnection,select,withinRadius,maxPower,quantities,compare,safeUrl,sourceUrl,csv,bounded} from '../web/model.mjs';
+const row=(id,lat=49,lon=-123)=>[id,'Station '+id,lat,lon,'CA','BC','Town','Address',1,1,50,'2026-01-01T00:00:00Z','',1,[[1,7,2,null],[32,150,1,null]],''];
+const raw=records=>({schema:'coolcode.chargegaps.v1',capturedAt:'2026-11-23T00:00:00Z',sourceUpdatedAt:'2026-04-22T00:00:00Z',sourceCommit:'a'.repeat(40),columns:COLUMNS,coverage:['CA'],lookup:{operators:{1:'Network'},connectors:{1:'Type1',32:'CCS'},usage:{1:'Public'},status:{50:'Operational'},providers:{1:{title:'Contributor',license:'CC BY 4.0',url:'https://example.org'}}},records});
+test('great-circle distances work across the antimeridian and identical points',()=>{assert.equal(distance(point(0,0),point(0,0)),0);assert.ok(Math.abs(distance(point(0,179),point(0,-179))-222.39)<.1);assert.ok(Math.abs(distance(point(0,0),point(0,1))-111.195)<.01);});
+test('coordinates reject blanks and out-of-range values',()=>{for(const p of [['',2],[91,0],[0,181],['nan',0]])assert.throws(()=>point(...p));});
+test('connector and power must match the same connection',()=>{const r=decode(raw([row(1)])).records[0];assert.equal(matchingConnection(r,'1',100),false);assert.equal(matchingConnection(r,'32',100),true);});
+test('unknown power and quantities are not transformed into known zero',()=>{const r=decode(raw([row(1)])).records[0];r.connections=[[1,null,null,null]];assert.equal(maxPower(r),null);assert.equal(quantities(r).unknown,true);assert.equal(matchingConnection(r,'',1),false);});
+test('filters are independent of the starter count and search includes IDs',()=>{const d=decode(raw([row(1),row(2),row(3,50,-123)]));assert.equal(select(d.records,{query:'3'},point(49,-123))[0].id,3);assert.equal(withinRadius(select(d.records,{},point(49,-123)),50).length,2);assert.equal(select(d.records,{operator:'99'},point(49,-123)).length,0);});
+test('malformed coordinates, duplicate IDs and missing attribution reject imports',()=>{assert.throws(()=>decode(raw([row(1),row(1)])));assert.throws(()=>decode(raw([row(1,100)])));const r=raw([row(1)]);r.lookup.providers={};assert.throws(()=>decode(r));});
+test('editions compare stable IDs but changed coverage gets no false differences',()=>{const a=decode(raw([row(1),row(2)])),r=raw([row(1),row(3)]);r.records[0][1]='Revised';const b=decode(r);assert.deepEqual(compare(a,b),{kind:'comparable',added:1,absent:1,changed:1});b.coverage=['US'];assert.equal(compare(a,b).kind,'coverage-changed');});
+test('links and formula-like export text are safe',()=>{assert.equal(safeUrl('javascript:alert(1)'),null);assert.equal(safeUrl('https://x:y@example.org'),null);assert.throws(()=>sourceUrl(-1));const d=decode(raw([row(1)]));d.records[0].title='=BAD()';const records=select(d.records,{},point(49,-123));assert.ok(csv(records,d.lookup).includes("'=BAD()"));});
+test('size bounds reject oversized files',async()=>{await assert.rejects(bounded(new Blob(['12345']).stream(),4));});
+test('bundled export decodes and matches recorded hash/count',()=>{const index=JSON.parse(readFileSync(new URL('../web/data/index.json',import.meta.url))),entry=index.captures[0],bytes=readFileSync(new URL('../web/data/'+entry.file,import.meta.url));assert.equal(createHash('sha256').update(bytes).digest('hex'),entry.sha256);const d=decode(JSON.parse(gunzipSync(bytes)));assert.equal(d.records.length,entry.count);assert.ok(d.records.length>0);assert.equal(d.coverage.join(','),entry.coverage.join(','));});

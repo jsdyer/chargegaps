@@ -1,0 +1,44 @@
+{
+  "countries": [
+    "CA"
+  ],
+  "defaultPoint": {
+    "name": "Langley",
+    "lat": 49.1044,
+    "lon": -122.6606
+  },
+  "defaultRadiusKm": 25,
+  "pageSize": 30,
+  "maxMapPoints": 1200,
+  "retainedCaptures": 8,
+  "minimumRecords": 10,
+  "maximumRecords": 150000,
+  "maximumDropFraction": 0.5,
+  "presets": [
+    {
+      "name": "Langley",
+      "lat": 49.1044,
+      "lon": -122.6606
+    },
+    {
+      "name": "Vancouver",
+      "lat": 49.2827,
+      "lon": -123.1207
+    },
+    {
+      "name": "Halifax",
+      "lat": 44.6488,
+      "lon": -63.5752
+    },
+    {
+      "name": "Prince George",
+      "lat": 53.9171,
+      "lon": -122.7497
+    }
+  ],
+  "tiles": {
+    "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "attribution": "\u00a9 OpenStreetMap contributors",
+    "attributionUrl": "https://www.openstreetmap.org/copyright"
+  }
+}

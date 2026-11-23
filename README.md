@@ -1,116 +1,129 @@
-# CoolCode browser tool template
+# Charge Gaps
 
-A starting point for independent tools at `coolcode.ca/<repo>/`: a working local-text
-example, responsive UI, Python standard-library build, Node tests, PR checks and Pages
-publication. No npm install is needed.
+[Open Charge Gaps](https://coolcode.ca/chargegaps/) explores charging locations from
+Open Charge Map country downloads. It helps inspect recorded coverage around any
+latitude/longitude, with connector, power, access, operator and region filters.
+It requires **no API key**. The first edition covers Canada.
 
-## Using the example
+## Try it
 
 <!-- coolcode:guide -->
-The first occurrence of each trimmed line keeps its place. Compare the output with the original text before copying the result.
+Start with **Langley**, select a connector and minimum power, then compare the nearest matching record and the number inside your radius. Enter any valid coordinates to investigate another point; the shortcuts are optional. Distances are straight lines, not driving routes, and an empty result means no matching record in this capture—not proof that no charger exists. **Recorded access** and **Recorded status** include private, restricted and planned locations unless filtered. The source export date is prominent because these downloads can be much older than their retrieval date. Save capture JSON to keep a portable record; imports and coordinate calculations stay in this tab.
 <!-- /coolcode:guide -->
 
-For a real tool, replace this paragraph with one or two plain-text sentences
-about an example, a limit or how to interpret the results. Keep the source,
-coverage, refresh behaviour and a worked example in this README as appropriate.
-When updating a tool, revise any details its behaviour has changed and keep the
-homepage's shorter data-source sentence in `tool.json` accurate.
-The hub imports the marked note into the catalogue README.
+1. Use a place shortcut or enter latitude, longitude and a 1–2,000 km radius.
+2. Select connectors and minimum power. Both must match the **same connection**.
+3. Click a location in the map or list for connection detail, dates and attribution.
+4. Export the matching nearby rows as CSV or save the complete capture JSON.
+5. Import a previous `.json`/`.json.gz` capture to inspect it. An imported capture is
+   compared with the previously viewed capture only when country coverage matches.
 
-## One-time template setup
+The initial real download contains **18,798** geolocated, explicitly open-licensed
+Canadian records, from **18,804** source rows. Six rows lacked an explicit open-data
+licence and were excluded. These numbers describe the first capture, not fixed
+application limits. The initial export commit is `8e3bedca48ca94807d96b2f5e7ee02cffe63ae54`,
+dated **22 April 2026**; it was retrieved **23 November 2026**. The application
+calculates and displays the source edition's age. It does not present this as a
+current or complete charging inventory.
 
-Enable **Settings → General → Template repository** here. This repository does not
-need Pages enabled: its workflow builds/tests but intentionally skips deployment.
-New copies also skip deployment until `scripts/init.py` sets the tool ID to match
-their repository name. This lets you create the repo before configuring Pages.
+## Sources and rights
 
-## Start a new tool
+- [Official OCM country exports](https://github.com/openchargemap/ocm-export) contain
+  `data/CA/*.json` and shared `data/referencedata.json`. The old `ocm-data` repository
+  is deprecated; this application uses its documented successor.
+- [Open Charge Map terms](https://www.openchargemap.org/about/terms): contributor
+  records are CC BY 4.0; third-party providers retain their own terms. The collector
+  includes only providers with `IsOpenDataLicensed: true` and a nonempty `License`.
+  Each capture, location detail and CSV retains the provider attribution/licence.
+- Initial included providers: Open Charge Map Contributors (CC BY 4.0), NREL/AFDC
+  (source states use for any purpose), AddÉnergie Technologies Inc. (CC BY 3.0),
+  and Greems Technologies (CC0). Filtering and normalization are performed here;
+  neither OCM nor those providers endorse this tool.
+- [Leaflet 1.9.4](https://leafletjs.com/) is vendored under its BSD-2-Clause licence
+  in `web/vendor/leaflet/`; provenance and upstream licence are retained.
+- Street maps use [OpenStreetMap](https://www.openstreetmap.org/copyright) tiles
+  under the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
+  Tiles are requested only for the interactive view, with ordinary browser caching
+  and a Referer. No tile downloads/prefetching are offered. CI blocks tile requests.
 
-1. Select **Use this template → Create a new repository**, choose owner `jsdyer`,
-   a unique lowercase name such as `my-tool`, and public visibility.
-2. Clone the new repository. Use Python 3.12+ and Node 24+.
-3. Set the identity, using a slug that matches the repository name:
+Power ratings may be estimates and vary by vehicle. Connection quantities are not
+necessarily independent stalls. Operational status is **the recorded status in an
+export**, not availability now. Straight-line distance does not account for roads,
+ferries, water, topography or permitted access. Confirm details with the operator.
+No routing, booking, charge-session or real-time status API is called.
 
-```sh
-python3 scripts/init.py my-tool --title "My Tool" --description "Describe what this tool does."
+## Expand or customize
+
+Edit [`web/config.json`](web/config.json):
+
+```json
+{
+  "countries": ["CA", "US"],
+  "defaultPoint": {"name": "Victoria", "lat": 48.4284, "lon": -123.3656},
+  "defaultRadiusKm": 25,
+  "presets": [{"name": "Victoria", "lat": 48.4284, "lon": -123.3656}]
+}
 ```
 
-Review the category, tags and icon in `tool.json`. `access: "browser"` tells the main
-catalogue that the tool works immediately without installation. `--owner` supports a different
-GitHub owner, but only projects owned by `jsdyer` inherit the CoolCode domain.
+Merge those fields into the complete config rather than replacing the file.
+`countries` accepts 1–20 distinct two-letter ISO codes present in the export.
+`presets` may contain any named valid coordinate pair; visitors can always enter
+coordinates themselves. `pageSize`, `maxMapPoints` and `retainedCaptures` control
+presentation and history. The map caps the number of displayed markers, nearest
+first; the full list/export still includes every matching record in the radius.
+`minimumRecords`, `maximumRecords`, and `maximumDropFraction` protect against
+incomplete upstream captures and can be adjusted for deliberate coverage changes.
+`tiles.url` can point at another permitted HTTPS tile service; update attribution
+in `web/app.mjs` along with provider terms when doing so. A default public tile
+service is not an unlimited hosting service.
 
-4. Replace the example in `web/` and its tests. Update the privacy explanation,
-   source attribution and README to describe the real tool.
-5. Test and preview:
+**Refresh and publish:** push config changes, then open Actions → **Charge Gaps ·
+Capture, check and publish** → **Run workflow**, check **Check and import the
+official country export** (`refresh`) and run on `main`. A normal code push only
+builds the retained data. Scheduled source checks run Mondays at **08:37 UTC**.
+They update the successful check time, but download/compile a new capture only
+when the source commit or country coverage changes. Unchanged source data stays
+clearly dated. Schedules can be delayed or disabled by GitHub; dates are authoritative.
+
+The collector uses an ignored sparse checkout of the upstream export. Each country
+must exist and have records; duplicate IDs, country mismatches and suspicious drops
+fail the collection. Validation/build/browser checks must pass before a successful
+capture is committed and deployed. Failed runs leave the previous public deployment.
+Eight complete compressed captures are retained by default. Earlier captures stay
+usable when the watchlist changes; differing country coverage begins a new baseline.
+New or absent directory rows are not claimed as newly opened/closed chargers.
+
+Local equivalent:
 
 ```sh
+python3 scripts/refresh.py
 node --test tests/*.test.mjs
 python3 -m unittest discover -s tests -v
 python3 scripts/build.py
-python3 -m http.server 8000 --directory dist
 ```
 
-Open `http://localhost:8000/`. The example trims lines, skips blanks and removes exact
-duplicates, preserving first-seen order and capitalization. It processes the text in tab memory. Update that explanation if your app behaves differently.
+The ordinary build is offline. `web/data/index.json` exposes `checkedAt`, source
+edition, retrieval time, country coverage, counts and SHA-256 digests. Data uses
+`coolcode.chargegaps.v1`; compressed capture files are linked by that index.
 
-CI also tests the browser flow and mobile layout at a project subpath. Replace the
-sample assertions in `tests/browser_smoke.py` when implementing your own UI. To run
-that check locally (optional for ordinary preview):
+## Privacy and deployment
 
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python3 -m pip install -r tests/browser-requirements.txt
-python3 -m playwright install --with-deps chromium
-python3 tests/browser_smoke.py
-```
+Search terms, reference coordinates and imported files stay in memory in this tab.
+Nothing is saved automatically. The map tile provider receives ordinary requests
+for the viewed area; switch off **Street map** to stop new tile requests. Opening
+OCM/provider links contacts those sites. The shared CoolCode counter records an
+aggregate app open, not the tool's coordinate/search/file input. No secret or API
+key is embedded or required.
 
-Playwright is a test-only dependency; the app and its static build do not use it.
+Source lives in `web/`; `scripts/build.py` produces `dist/` for GitHub Pages at
+`/chargegaps/`. Keep the project's Pages source set to GitHub Actions; no CNAME.
+Unit tests cover geodesic distances, connection-specific power matching, unknown
+values, record/licence validation, capture comparisons, coordinate expansion,
+CSV formula handling and source configuration expansion beyond the starter country.
+CI also tests real-data loading, a non-preset point, search, import/export and mobile
+layout at a project subpath. Browser-only tests use Playwright; no app runtime
+package manager is needed.
 
-## Publish and register
-
-When the actual tool is ready, in the **new tool repository** set **Settings → Pages → Build and deployment →
-Source → GitHub Actions**. Push to `main`, or manually run **Browser tool · Check and
-publish** after enabling Pages. If the initial deployment ran before Pages was enabled,
-enable it and rerun. PRs only check/build and provide a downloadable preview artifact.
-
-Keep `{{VISIT_COUNTER}}` in the page head and `{{ISSUE_LINK}}` in the footer when replacing the starter UI. The build enables these for initialized CoolCode repositories. The shared counter records aggregate opens on coolcode.ca by public tool ID. Toolbox inputs and URL parameters are excluded. The issue link opens a reporting form with the tool already selected.
-
-Keep app-owned asset paths and module imports relative. Check `https://coolcode.ca/my-tool/`.
-Do not add a CNAME or set `coolcode.ca` as this project's custom domain; the account
-site supplies it. Only successful `main` builds deploy.
-
-After verifying the app, copy the reviewed object from `tool.json` into `data/tools.json`
-in [the main site](https://github.com/jsdyer/jsdyer.github.io). Each tool still builds
-independently. Update the hub record when listing metadata changes; the hub is the
-authority for discovery. Ordinary app updates touch only this repository.
-
-The main site separates **Use in your browser** from **Install yourself**. An app
-that asks for a file is still a browser tool. Standalone Linux packages should start
-in their own repositories with their own build/release workflow, rather than copying
-this browser-only scaffold. Their hub record uses `access: "install"`, links to an
-installation guide, and includes `requirements`.
-
-## Files
-
-| Path | Purpose |
-| --- | --- |
-| `tool.json` | Page metadata and a ready-to-copy catalogue record |
-| `web/` | HTML, responsive CSS, DOM interactions and separate model logic |
-| `scripts/build.py` | Escape metadata and build `web/` into `dist/` |
-| `scripts/init.py` | Set a new project's identity |
-| `tests/` | Application and builder tests |
-| `.github/workflows/pages.yml` | Check PRs and publish successful main builds |
-| `AGENTS.md` | Instructions for future coding work |
-
-Namespace optional storage as `coolcode:<tool-id>:<key>`; CoolCode paths share a
-browser origin. Don't save pasted text/uploads by default. Document external APIs
-and send only the information needed for the selected action. Never embed secrets.
-
-Scheduled refresh is opt-in. Validate source data before deploying, display its date,
-and preserve the last good deployment on failure. Public-repository schedules can
-stop after 60 days without repository activity.
-
-Templates don't propagate future edits automatically. Adopt fixes explicitly and
-consider a versioned reusable workflow once several tools confirm the shared process.
-Choose and add the intended software license before distributing a new project.
+Related tools: [Road Pulse](https://coolcode.ca/roadpulse/),
+[Dock Diary](https://coolcode.ca/dockdiary/) and
+[Trailglass](https://coolcode.ca/trailglass/).

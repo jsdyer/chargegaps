@@ -1,7 +1,34 @@
-// Keep transformations separate from the DOM so they can be tested directly.
-export function cleanLines(text) {
-  if (typeof text !== 'string') throw new TypeError('Expected text');
-  const lines = text.split(/\r\n|\r|\n/).map(line => line.trim()).filter(Boolean);
-  const unique = [...new Set(lines)];
-  return { text: unique.join('\n'), count: unique.length, removed: lines.length - unique.length };
+export const COLUMNS=['id','title','lat','lon','country','region','town','address','operator','usage','status','verified','updated','provider','connections','cost'];
+const finite=x=>typeof x==='number'&&Number.isFinite(x);
+export function point(lat,lon){if(String(lat).trim()===''||String(lon).trim()==='')throw Error('Enter both coordinates.');lat=Number(lat);lon=Number(lon);if(!finite(lat)||!finite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)throw Error('Use latitude −90 to 90 and longitude −180 to 180.');return {lat,lon};}
+export function distance(a,b){const r=Math.PI/180,dlat=(b.lat-a.lat)*r,dlon=(b.lon-a.lon)*r,v=Math.sin(dlat/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dlon/2)**2;return 6371.0088*2*Math.atan2(Math.sqrt(Math.max(0,v)),Math.sqrt(Math.max(0,1-v)));}
+export function decode(raw){
+ if(!raw||raw.schema!=='coolcode.chargegaps.v1'||JSON.stringify(raw.columns)!==JSON.stringify(COLUMNS)||!Array.isArray(raw.records)||raw.records.length<1||raw.records.length>1000000||!Array.isArray(raw.coverage)||!raw.coverage.every(x=>/^[A-Z]{2}$/.test(x))||!Number.isFinite(Date.parse(raw.capturedAt))||!Number.isFinite(Date.parse(raw.sourceUpdatedAt))||!/^[a-f0-9]{40}$/.test(raw.sourceCommit)||!raw.lookup)throw Error('This is not a supported Charge Gaps capture.');
+ for(const k of ['operators','connectors','usage','status','providers'])if(!raw.lookup[k]||typeof raw.lookup[k]!=='object'||Array.isArray(raw.lookup[k]))throw Error('Capture lookup tables are incomplete.');
+ for(const k of ['operators','connectors','usage','status'])if(Object.values(raw.lookup[k]).some(v=>typeof v!=='string'))throw Error('Invalid lookup label.');
+ if(Object.values(raw.lookup.providers).some(p=>!p||typeof p.title!=='string'||typeof p.license!=='string'||typeof p.url!=='string'))throw Error('Invalid provider metadata.');
+ if(raw.changes&&( !['baseline','coverage-changed','comparable'].includes(raw.changes.kind)||['added','absent','changed'].some(k=>raw.changes.kind==='comparable'&&(!Number.isInteger(raw.changes[k])||raw.changes[k]<0))))throw Error('Invalid change summary.');
+ const ids=new Set();
+ const records=raw.records.map(row=>{
+  if(!Array.isArray(row)||row.length!==COLUMNS.length)throw Error('Invalid charging location.');
+  const x=Object.fromEntries(COLUMNS.map((k,i)=>[k,row[i]]));
+  if(!Number.isInteger(x.id)||x.id<=0||ids.has(x.id)||!finite(x.lat)||Math.abs(x.lat)>90||!finite(x.lon)||Math.abs(x.lon)>180||!raw.coverage.includes(x.country)||!['title','country','region','town','address','verified','updated','cost'].every(k=>typeof x[k]==='string')||!Array.isArray(x.connections)||x.connections.some(c=>!Array.isArray(c)||c.length!==4||(c[1]!==null&&(!finite(c[1])||c[1]<0))||(c[2]!==null&&(!Number.isInteger(c[2])||c[2]<0))))throw Error('Capture contains invalid or duplicate locations.');
+  const p=raw.lookup.providers[String(x.provider)];if(!p||typeof p.title!=='string'||typeof p.license!=='string'||!p.license)throw Error('A location is missing its provider attribution.');
+  ids.add(x.id);x.search=[x.title,x.town,x.region,x.address,x.id,raw.lookup.operators[String(x.operator)]||''].join(' ').toLocaleLowerCase();return x;
+ });return {...raw,records,raw};
 }
+export function matchingConnection(record,connector,minPower){return record.connections.some(c=>(!connector||String(c[0])===String(connector))&&(!minPower||(c[1]!==null&&c[1]>=minPower)));}
+export function select(records,filters,origin){
+ const power=Number(filters.power||0);if(!finite(power)||power<0||power>10000)throw Error('Use a minimum power from 0 to 10,000 kW.');
+ const query=(filters.query||'').toLocaleLowerCase().trim(),words=query.split(/\s+/).filter(Boolean);
+ return records.filter(r=>words.every(w=>r.search.includes(w))&&(!filters.region||r.region===filters.region)&&(!filters.operator||String(r.operator)===filters.operator)&&(!filters.usage||String(r.usage)===filters.usage)&&(!filters.status||String(r.status)===filters.status)&&(!(filters.connector||power)||matchingConnection(r,filters.connector,power))).map(r=>({...r,distance:distance(origin,r)})).sort((a,b)=>a.distance-b.distance||a.id-b.id);
+}
+export function withinRadius(records,radius){radius=Number(radius);if(!finite(radius)||radius<1||radius>2000)throw Error('Use a radius from 1 to 2,000 km.');return records.filter(r=>r.distance<=radius);}
+export function maxPower(r){const values=r.connections.map(c=>c[1]).filter(x=>x!==null);return values.length?Math.max(...values):null;}
+export function quantities(r){const values=r.connections.map(c=>c[2]);return {reported:values.filter(x=>x!==null).reduce((a,b)=>a+b,0),unknown:!values.length||values.some(x=>x===null),connections:values.length};}
+export function safeUrl(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null;}catch{return null;}}
+export function sourceUrl(id){if(!Number.isInteger(id)||id<=0)throw Error('Invalid OCM ID');return `https://openchargemap.org/site/poi/details/${id}`;}
+export function compare(a,b){if(JSON.stringify([...a.coverage].sort())!==JSON.stringify([...b.coverage].sort()))return {kind:'coverage-changed'};const old=new Map(a.raw.records.map(r=>[r[0],r])),now=new Map(b.raw.records.map(r=>[r[0],r]));return {kind:'comparable',added:[...now.keys()].filter(k=>!old.has(k)).length,absent:[...old.keys()].filter(k=>!now.has(k)).length,changed:[...now.keys()].filter(k=>old.has(k)&&JSON.stringify(old.get(k))!==JSON.stringify(now.get(k))).length};}
+export function csv(records,lookup){const q=x=>{let s=String(x??'');if(/^[=+@\t\r-]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};const rows=[['OCM ID','Title','Town','Region','Country','Latitude','Longitude','Straight-line km','Maximum reported kW','Recorded access','Recorded status','Operator','Last verified','Provider','Provider licence','Source']];for(const r of records)rows.push([r.id,r.title,r.town,r.region,r.country,r.lat,r.lon,r.distance.toFixed(3),maxPower(r),lookup.usage[r.usage]||'Unknown',lookup.status[r.status]||'Unknown',lookup.operators[r.operator]||'Unknown',r.verified,lookup.providers[r.provider].title,lookup.providers[r.provider].license,sourceUrl(r.id)]);return '\uFEFF'+rows.map(r=>r.map(q).join(',')).join('\r\n');}
+export async function bounded(stream,max){const reader=stream.getReader(),chunks=[];let size=0;try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>max)throw Error('The capture is larger than the supported limit.');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}const out=new Uint8Array(size);let offset=0;for(const c of chunks){out.set(c,offset);offset+=c.length;}return out;}
+export async function fetchBytes(url,max,timeout=30000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);try{const r=await fetch(url,{signal:controller.signal});if(!r.ok)throw Error(`Request returned HTTP ${r.status}.`);return await bounded(r.body,max);}catch(e){if(controller.signal.aborted)throw Error('Download timed out. Reload to try again.');throw e;}finally{clearTimeout(timer);}}

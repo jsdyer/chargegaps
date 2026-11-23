@@ -1,0 +1,18 @@
+{
+  "schema": "coolcode.chargegaps.index.v1",
+  "captures": [
+    {
+      "file": "captures/20261123T113649Z-8e3bedca.json.gz",
+      "capturedAt": "2026-11-23T11:36:49Z",
+      "sourceUpdatedAt": "2026-04-22T18:59:34+08:00",
+      "sourceCommit": "8e3bedca48ca94807d96b2f5e7ee02cffe63ae54",
+      "count": 18798,
+      "coverage": [
+        "CA"
+      ],
+      "sha256": "e0a359c26508ffbe8b05fa74f69ddcb06a96fcf14421a64f61716eddf67865b7",
+      "expandedBytes": 3455338
+    }
+  ],
+  "checkedAt": "2026-11-23T11:36:49Z"
+}
