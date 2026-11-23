@@ -18,6 +18,6 @@
   "data_info": {
     "mode": "snapshot",
     "detail": "Dated Open Charge Map country exports, searched locally with straight-line distances and provider attribution.",
-    "cadence": "Weekly source check"
+    "cadence": "Weekly"
   }
 }
