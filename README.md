@@ -3,12 +3,12 @@
 [Open Charge Gaps](https://coolcode.ca/chargegaps/) explores charging locations from
 Open Charge Map country downloads. It helps inspect recorded coverage around any
 latitude/longitude, with connector, power, access, operator and region filters.
-It requires **no API key**. The first edition covers Canada.
+Visitors require **no API key**. The owner uses Actions secret `DATA_GOV_API_KEY` for the separate Canadian AFDC capture.
 
 ## Try it
 
 <!-- coolcode:guide -->
-Start with **Langley**, select a connector and minimum power, then compare the nearest matching record and the number inside your radius. Enter any valid coordinates to investigate another point; the shortcuts are optional. Distances are straight lines, not driving routes, and an empty result means no matching record in this capture—not proof that no charger exists. **Recorded access** and **Recorded status** include private, restricted and planned locations unless filtered. The source export date is prominent because these downloads can be much older than their retrieval date. Save capture JSON to keep a portable record; imports and coordinate calculations stay in this tab.
+Start with **Langley**, select a connector and minimum power, then compare the nearest matching record and the number inside your radius. Enter any valid coordinates to investigate another point; the shortcuts are optional. Distances are straight lines, not driving routes, and an empty result means no matching record in this capture—not proof that no charger exists. **Recorded access** and **Recorded status** include private, restricted and planned locations unless filtered. The source export date is prominent because these downloads can be much older than their retrieval date. Use the separate **Cross-check Canadian coverage with AFDC** section for the same point and radius; its filters and counts are independent, and overlapping directory counts must not be added. Save capture JSON to keep a portable record; imports and coordinate calculations stay in this tab.
 <!-- /coolcode:guide -->
 
 1. Use a place shortcut or enter latitude, longitude and a 1–2,000 km radius.
@@ -112,8 +112,7 @@ Search terms, reference coordinates and imported files stay in memory in this ta
 Nothing is saved automatically. The map tile provider receives ordinary requests
 for the viewed area; switch off **Street map** to stop new tile requests. Opening
 OCM/provider links contacts those sites. The shared CoolCode counter records an
-aggregate app open, not the tool's coordinate/search/file input. No secret or API
-key is embedded or required.
+aggregate app open, not the tool's coordinate/search/file input. No secret or API key is embedded in the browser.
 
 Source lives in `web/`; `scripts/build.py` produces `dist/` for GitHub Pages at
 `/chargegaps/`. Keep the project's Pages source set to GitHub Actions; no CNAME.
@@ -135,3 +134,13 @@ Public GitHub repositories can have scheduled workflows disabled after 60 days o
 
 This is an interim mitigation, not a scheduling guarantee: GitHub does not document active-workflow renewal as a permanent exemption, and scheduled runs can be delayed or dropped. A scheduler on our own Linux server is the planned independent trigger. The guard does not collect data, create dummy commits, or change source/check timestamps; successful collection and published data freshness still need monitoring.
 <!-- /schedule-reliability -->
+
+## Canadian AFDC cross-check
+
+The separate AFDC section uses the U.S. Department of Energy / NRCan alternative-fuel-station catalogue. It shows Canadian electric-charging locations at the same coordinates/radius, with independent connector/access filters, source confirmation dates, reported port counts, source pricing text and CSV export. It does not merge identities with Open Charge Map or infer opening/closure from disagreements. Port counts are not added across connector types, and unreported counts stay unknown. This is a dated catalogue, not real-time stall availability.
+
+Add **Settings → Secrets and variables → Actions → repository secret** named `DATA_GOV_API_KEY`, containing the key only. It is sent using `X-Api-Key` to the current official `developer.nlr.gov` API. URLs, captured records and logs never include it; raw responses are not saved. The older developer.nrel.gov hostname is not used. See [official API documentation](https://developer.nlr.gov/docs/transportation/alt-fuel-stations-v1/all/).
+
+The first main push without `web/data/afdc.json` collects it; later ordinary pushes reuse the successful snapshot. The existing weekly schedule and manual `refresh` action refresh both sources. Source failures prevent replacement of the public deployment. AFDC collector validates the full returned record count, Canadian electric coverage, IDs, coordinates and a maximum25% decline before writing atomically. Its `checkedAt` is retrieval time; each station's confirmation/update dates stay separate. Normal builds remain offline.
+
+Local collection: `DATA_GOV_API_KEY` in the private environment, then `python3 scripts/refresh_afdc.py`. Never put the key in a command argument, public variable or source file.

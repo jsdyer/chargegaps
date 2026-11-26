@@ -8,7 +8,8 @@
     "electric vehicles",
     "coverage",
     "Canada",
-    "Open Charge Map"
+    "Open Charge Map",
+    "AFDC"
   ],
   "icon": "map-pin",
   "url": "/chargegaps/",
@@ -17,7 +18,7 @@
   "access": "browser",
   "data_info": {
     "mode": "snapshot",
-    "detail": "Dated Open Charge Map country exports, searched locally with straight-line distances and provider attribution.",
+    "detail": "Dated Open Charge Map exports and a separate Canadian AFDC catalogue, with local distance calculations and source dates.",
     "cadence": "Weekly"
   }
 }

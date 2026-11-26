@@ -39,6 +39,15 @@ def main():
                 saved=Path(temporary)/'capture.json';download.value.save_as(saved)
                 page.locator('#import').set_input_files(str(saved));expect(page.locator('#capture')).to_have_value('import-1')
                 expect(page.locator('#change-summary')).to_contain_text('0 added')
+                if (ROOT/'dist/data/afdc.json').exists():
+                    expect(page.locator('#afdc-date')).to_contain_text('Canadian records')
+                    page.locator('#afdc-update').click()
+                    expect(page.locator('#afdc-status')).to_contain_text('AFDC records within')
+                    expect(page.locator('#afdc-export')).to_be_enabled()
+                    assert page.locator('#afdc-results article').count()>0
+                    with page.expect_download() as afdc_download:page.locator('#afdc-export').click()
+                    exported=Path(temporary)/'afdc.csv';afdc_download.value.save_as(exported)
+                    assert 'AFDC ID' in exported.read_text()
                 page.screenshot(path=str(screenshots/'desktop.png'),full_page=True)
                 page.set_viewport_size({'width':390,'height':844})
                 assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'),page.evaluate('({width:innerWidth,scroll:document.documentElement.scrollWidth})')
